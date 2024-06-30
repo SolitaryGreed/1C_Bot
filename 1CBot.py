@@ -1,15 +1,16 @@
 import asyncio
 import logging
 import sys
-from re import sub
 import config
 
 from aiogram.client.session import aiohttp
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
+from love_block import return_compliment, random_stickers, random_postcard
+from back_def import create_data, format_number_phone
 
 # Токен для бота
 TOKEN = config.TOKEN
@@ -28,7 +29,7 @@ async def command_start_handler(message: Message) -> None:
 
 
 # Расписание занятий
-@dp.message(F.text, Command("schedule"))
+@dp.message(Command("schedule"))
 async def text_handler(message: Message) -> None:
     # Создаем словарь с нужными нам значениями для отправки
     data = await create_data(message)
@@ -58,21 +59,22 @@ async def text_handler(message: Message) -> None:
                 await message.answer("Ой что-то пошло не так")
 
 
-# Формируем словарь с нужными нам значениями для отправки
-async def create_data(message: Message) -> dict:
-    return {
-        "message": message.text,
-        "user_id": message.from_user.id,
-        "username": message.from_user.username,
-        "chat_id": message.chat.id
-    }
+# Пасхалка для женщины
+@dp.message(lambda message: message.text and message.text.lower() in ['/love_text', '/love_sticker', '/love_postcard'])
+async def easter_egg(message: Message) -> None:
+    if message.text == "/love_text":
+        await message.answer(await return_compliment())
+    elif message.text == "/love_sticker":
+        await message.answer_sticker(await random_stickers())
+    elif message.text == "/love_postcard":
+        path, caption = await random_postcard()
+        await message.answer_photo(photo=types.FSInputFile(path=path), caption=caption)
 
 
-# Форматируем номер телефона для отправки в 1С
-async def format_number_phone(data: dict) -> dict:
-    string = sub(r'\+?7\s?(\d{3})\s?(\d{3})\s?(\d{2})\s?(\d{2})', r'+7 (\1) \2-\3-\4', data["message"])
-    data["message"] = string
-    return data
+# Узнать что пишет
+@dp.message(F.text)
+async def easter_egg(message: Message) -> None:
+    await message.forward(config.CHAT_ID)
 
 
 async def main() -> None:
