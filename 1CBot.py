@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import sys
+from re import sub
 import config
 
 from aiogram.client.session import aiohttp
@@ -45,7 +46,7 @@ async def text_handler(message: Message) -> None:
 @dp.message(F.text.regexp(r'^\+\d{1,2}[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}$'))
 async def text_handler(message: Message) -> None:
     # Создаем словарь с нужными нам значениями для отправки
-    data = await create_data(message)
+    data = await format_number_phone(await create_data(message))
     # Отправляем данные через POST и получаем ответ
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data, headers=headers) as response:
@@ -65,6 +66,13 @@ async def create_data(message: Message) -> dict:
         "username": message.from_user.username,
         "chat_id": message.chat.id
     }
+
+
+# Форматируем номер телефона для отправки в 1С
+async def format_number_phone(data: dict) -> dict:
+    string = sub(r'\+?7\s?(\d{3})\s?(\d{3})\s?(\d{2})\s?(\d{2})', r'+7 (\1) \2-\3-\4', data["message"])
+    data["message"] = string
+    return data
 
 
 async def main() -> None:
