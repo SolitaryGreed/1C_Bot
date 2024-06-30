@@ -43,7 +43,7 @@ async def text_handler(message: Message) -> None:
 
 
 # Получения номера телефона
-@dp.message(F.text.regexp(r'^\+\d{1,2}[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}$'))
+@dp.message(F.text.regexp(r'\+7\s*\(?985\)?[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}'))
 async def text_handler(message: Message) -> None:
     # Создаем словарь с нужными нам значениями для отправки
     data = await format_number_phone(await create_data(message))
