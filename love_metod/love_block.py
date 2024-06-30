@@ -1,8 +1,8 @@
 import random
 
-import postcard
-import text
-import sticker
+import love_metod.postcard as postcard
+import love_metod.text as text
+import love_metod.sticker as sticker
 
 
 async def return_compliment():
@@ -20,7 +20,7 @@ async def random_stickers():
 
 
 async def random_postcard():
-    random_number = random.randint(0, 0)
+    random_number = random.randint(0, 4)
     path = postcard.text_postcard_key[random_number]
     caption = postcard.text_postcard.get(postcard.text_postcard_key[random_number])
     return path, caption

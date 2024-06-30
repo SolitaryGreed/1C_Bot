@@ -9,7 +9,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
-from love_block import return_compliment, random_stickers, random_postcard
+from love_metod.love_block import return_compliment, random_stickers, random_postcard
 from back_def import create_data, format_number_phone
 
 # Токен для бота
