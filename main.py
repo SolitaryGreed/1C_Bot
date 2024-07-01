@@ -40,7 +40,7 @@ async def text_handler(message: Message) -> None:
                 await message.answer("Вам нужно зарегистрироваться в нашем боте для этого отправьте номер телефона в "
                                      "формате: +7 (999) 999-99-99")
             else:
-                await message.answer("Ой что-то пошло не так")
+                await message.answer("Ой, что-то пошло не так")
 
 
 # Получения номера телефона
@@ -56,7 +56,7 @@ async def text_handler(message: Message) -> None:
             elif response.status == 200 and str(response.headers["Text"]) == "User is registered":
                 await message.answer("Поздравлю вы зарегистрированы в нашем боте")
             else:
-                await message.answer("Ой что-то пошло не так")
+                await message.answer("Ой, что-то пошло не так")
 
 
 # Пасхалка для женщины
@@ -69,12 +69,6 @@ async def easter_egg(message: Message) -> None:
     elif message.text == "/love_postcard":
         path, caption = await random_postcard()
         await message.answer_photo(photo=types.FSInputFile(path=path), caption=caption)
-
-
-# Узнать что пишет
-@dp.message(F.text)
-async def easter_egg(message: Message) -> None:
-    await message.forward(config.CHAT_ID)
 
 
 async def main() -> None:
