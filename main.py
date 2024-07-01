@@ -9,8 +9,11 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
+from from_state import Form
 from love_metod.love_block import return_compliment, random_stickers, random_postcard
-from back_def import create_data, format_number_phone
+from back_def import create_data, format_number_phone, cancel_registration
+from aiogram.fsm.context import FSMContext
+
 
 # Токен для бота
 TOKEN = config.TOKEN
@@ -25,7 +28,7 @@ dp = Dispatcher()
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     await message.answer("Приветствуем вас в нашем боте! Тут вы можете получить расписание своих занятий."
-                         "\n\n/schedule - Расписание")
+                         "\n\n/schedule - Расписание \n/registration - Регистрация")
 
 
 # Расписание занятий
@@ -55,11 +58,69 @@ async def text_handler(message: Message) -> None:
                 await message.answer("Вы уже зарегистрированы в нашем боте")
             elif response.status == 200 and str(response.headers["Text"]) == "User is registered":
                 await message.answer("Поздравлю вы зарегистрированы в нашем боте")
+            elif response.status == 200 and str(response.headers["Text"]) == "The user is not in the database":
+                await message.answer("Если вы новый пользователь нашего клуба тогда отправьте команду /registration")
             else:
                 await message.answer("Ой, что-то пошло не так")
 
 
-# Пасхалка для женщины
+# Регистрация нового пользователя в нашем клубе
+@dp.message(Command("registration"))
+async def command_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(Form.name)
+    await message.answer_document(document=types.FSInputFile("content/Agreement.pdf"), caption="Продолжая регистрацию "
+                                                                                               "вы соглашаетесь с "
+                                                                                               "правилами обработки "
+                                                                                               "персональных "
+                                                                                               "данных.\nВведи ваше "
+                                                                                               "имя.\nЕсли вы передумали"
+                                                                                               " введи слово 'Отмена'.")
+
+
+# Ввод имени
+@dp.message(Form.name)
+async def process_name(message: Message, state: FSMContext) -> None:
+    # Отмена регистрации
+    if message.text == "Отмена":
+        await cancel_registration(message, state)
+    else:
+        if set(".,:;!_*-+()/#¤%&)1234567890").isdisjoint(message.text):
+            await state.update_data(name=message.text)
+            await state.set_state(Form.surname)
+            await message.answer("Введите вашу фамилию")
+        else:
+            await message.answer("Имя может содержать только буквы")
+
+
+@dp.message(Form.surname)
+async def process_name(message: Message, state: FSMContext) -> None:
+    # Отмена регистрации
+    if message.text == "Отмена":
+        await cancel_registration(message, state)
+    else:
+        if set(".,:;!_*-+()/#¤%&)1234567890").isdisjoint(message.text):
+            await state.update_data(surname=message.text)
+            await state.set_state(Form.phone_number)
+            await message.answer("Введите ваш номер телефона в формате: +7 (999) 999-99-99")
+        else:
+            await message.answer("Фамилия может содержать только буквы")
+
+
+@dp.message(Form.surname)
+async def process_name(message: Message, state: FSMContext) -> None:
+    # Отмена регистрации
+    if message.text == "Отмена":
+        await cancel_registration(message, state)
+    else:
+        if not set("+-()1234567890").isdisjoint(message.text):
+            await state.update_data(surname=message.text)
+            await state.set_state(Form.phone_number)
+            await message.answer("Введите ваш номер телефона в формате: +7 (999) 999-99-99")
+        else:
+            await message.answer("Фамилия может содержать только буквы")
+
+
+# Пасхалка для Тани
 @dp.message(lambda message: message.text and message.text.lower() in ['/love_text', '/love_sticker', '/love_postcard'])
 async def easter_egg(message: Message) -> None:
     if message.text == "/love_text":
