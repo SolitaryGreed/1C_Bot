@@ -46,7 +46,7 @@ async def text_handler(message: Message) -> None:
                 await message.answer("Ой, что-то пошло не так")
 
 
-# Получения номера телефона
+# Регистрация в боте по номеру телефона
 @dp.message(F.text.regexp(r'\+7\s*\(?985\)?[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}'))
 async def text_handler(message: Message) -> None:
     # Создаем словарь с нужными нам значениями для отправки
@@ -106,18 +106,39 @@ async def process_name(message: Message, state: FSMContext) -> None:
             await message.answer("Фамилия может содержать только буквы")
 
 
-@dp.message(Form.surname)
+@dp.message(Form.phone_number)
 async def process_name(message: Message, state: FSMContext) -> None:
     # Отмена регистрации
     if message.text == "Отмена":
         await cancel_registration(message, state)
     else:
         if not set("+-()1234567890").isdisjoint(message.text):
-            await state.update_data(surname=message.text)
-            await state.set_state(Form.phone_number)
-            await message.answer("Введите ваш номер телефона в формате: +7 (999) 999-99-99")
+            data = await state.update_data(phone_number=message.text)
+            await state.set_state(Form.gender)
+            await message.answer("Введите ваш пол М или Ж")
         else:
-            await message.answer("Фамилия может содержать только буквы")
+            await message.answer("Номер телефона должен содержать только цифры и формат")
+
+
+@dp.message(Form.gender)
+async def process_name(message: Message, state: FSMContext) -> None:
+    # Отмена регистрации
+    if message.text == "Отмена":
+        await cancel_registration(message, state)
+    else:
+        if message.text == "М" or message.text == "Ж":
+            await state.update_data(gender=message.text)
+            await state.update_data(user_id=message.from_user.id)
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=await Form.create_data(await state.get_data()), headers=headers) as response:
+                    if response.status == 200 and str(response.headers["Text"]) == "New user registered":
+                        await message.answer("Поздравляем с успешной регистрацией регистрацией")
+                    elif response.status == 200 and str(response.headers["Text"]) == "Registered":
+                        await message.answer("Вы уже являетесь клиентом нашего клуба")
+                    elif response.status == 500:
+                        await message.answer("Ой, что-то пошло не так")
+        else:
+            await message.answer("Введите М или Ж")
 
 
 # Пасхалка для Тани
