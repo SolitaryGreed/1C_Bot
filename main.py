@@ -11,7 +11,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from from_state import Form
 from love_metod.love_block import return_compliment, random_stickers, random_postcard
-from back_def import create_data, format_number_phone, cancel_registration
+from back_def import create_data, format_number_phone, cancel_registration, format_string
 from aiogram.fsm.context import FSMContext
 
 
@@ -39,9 +39,15 @@ async def text_handler(message: Message) -> None:
     # Отправляем данные через POST и получаем ответ
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data, headers=headers) as response:
-            if response.status == 200 and str(response.headers["Text"]) == "No register":
+            # Получаем текст из ответа
+            json_text = await response.json()
+            if response.status == 200 and json_text == "No register":
                 await message.answer("Вам нужно зарегистрироваться в нашем боте для этого отправьте номер телефона в "
                                      "формате: +7 (999) 999-99-99")
+            elif response.status == 200 and json_text == "No records":
+                await message.answer("У вас нет записей в нашем клубе")
+            elif response.status == 200 and json_text.startswith("ResultOk"):
+                await message.answer(await format_string(json_text))
             else:
                 await message.answer("Ой, что-то пошло не так")
 
@@ -54,11 +60,12 @@ async def text_handler(message: Message) -> None:
     # Отправляем данные через POST и получаем ответ
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data, headers=headers) as response:
-            if response.status == 200 and str(response.headers["Text"]) == "Registered":
+            json_text = await response.json()
+            if response.status == 200 and json_text == "Registered":
                 await message.answer("Вы уже зарегистрированы в нашем боте")
-            elif response.status == 200 and str(response.headers["Text"]) == "User is registered":
+            elif response.status == 200 and json_text == "User is registered":
                 await message.answer("Поздравлю вы зарегистрированы в нашем боте")
-            elif response.status == 200 and str(response.headers["Text"]) == "The user is not in the database":
+            elif response.status == 200 and json_text == "The user is not in the database":
                 await message.answer("Если вы новый пользователь нашего клуба тогда отправьте команду /registration")
             else:
                 await message.answer("Ой, что-то пошло не так")
@@ -118,7 +125,7 @@ async def process_name(message: Message, state: FSMContext) -> None:
     else:
         # Проверяем что введены только символы, которые используются при вводе телефона
         if not set("+-()1234567890").isdisjoint(message.text):
-            data = await state.update_data(phone_number=message.text)
+            await state.update_data(phone_number=message.text)
             await state.set_state(Form.gender)
             await message.answer("Введите ваш пол М или Ж")
         else:
@@ -138,9 +145,10 @@ async def process_name(message: Message, state: FSMContext) -> None:
             await state.update_data(user_id=message.from_user.id)
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=await Form.create_data(await state.get_data()), headers=headers) as response:
-                    if response.status == 200 and str(response.headers["Text"]) == "New user registered":
+                    json_text = await response.json()
+                    if response.status == 200 and json_text == "New user registered":
                         await message.answer("Поздравляем с успешной регистрацией в нашем клубе")
-                    elif response.status == 200 and str(response.headers["Text"]) == "Registered":
+                    elif response.status == 200 and json_text == "Registered":
                         await message.answer("Вы уже являетесь клиентом нашего клуба")
                     elif response.status == 500:
                         await message.answer("Ой, что-то пошло не так")

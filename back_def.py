@@ -1,5 +1,4 @@
 from re import sub
-from aiogram.client.session import aiohttp
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
@@ -27,3 +26,18 @@ async def cancel_registration(message: Message, state: FSMContext) -> None:
         return
     await state.clear()
     await message.answer("Регистрация отменена\n\n/schedule - Расписание \n/registration - Регистрация")
+
+
+# Форматируем строку для пользователя
+async def format_string(json_text: str) -> str:
+    split_string = json_text[10:].split("||")
+    result_string = "У вас есть запись"
+    for i in split_string:
+        current_data = i.split("//")
+        result_string += (
+            f'\nВ клуб {current_data[0]}'
+            f'\nК тренеру: {current_data[1]}'
+            f'\nВремя: {current_data[2][:-3]}'
+            f'\n'
+        )
+    return result_string
