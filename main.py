@@ -15,7 +15,7 @@ from back_def import create_data, format_number_phone, cancel_registration
 from aiogram.fsm.context import FSMContext
 
 
-# Токен для бота
+# Токен, url, и тип контента
 TOKEN = config.TOKEN
 url = config.URL
 headers = config.CONTENT_TYPE
@@ -84,6 +84,7 @@ async def process_name(message: Message, state: FSMContext) -> None:
     if message.text == "Отмена":
         await cancel_registration(message, state)
     else:
+        # Проверяем что введены только буквы
         if set(".,:;!_*-+()/#¤%&)1234567890").isdisjoint(message.text):
             await state.update_data(name=message.text)
             await state.set_state(Form.surname)
@@ -92,12 +93,14 @@ async def process_name(message: Message, state: FSMContext) -> None:
             await message.answer("Имя может содержать только буквы")
 
 
+# Ввод фамилии
 @dp.message(Form.surname)
 async def process_name(message: Message, state: FSMContext) -> None:
     # Отмена регистрации
     if message.text == "Отмена":
         await cancel_registration(message, state)
     else:
+        # Проверяем что введены только буквы
         if set(".,:;!_*-+()/#¤%&)1234567890").isdisjoint(message.text):
             await state.update_data(surname=message.text)
             await state.set_state(Form.phone_number)
@@ -106,12 +109,14 @@ async def process_name(message: Message, state: FSMContext) -> None:
             await message.answer("Фамилия может содержать только буквы")
 
 
+# Ввод номера телефона
 @dp.message(Form.phone_number)
 async def process_name(message: Message, state: FSMContext) -> None:
     # Отмена регистрации
     if message.text == "Отмена":
         await cancel_registration(message, state)
     else:
+        # Проверяем что введены только символы, которые используются при вводе телефона
         if not set("+-()1234567890").isdisjoint(message.text):
             data = await state.update_data(phone_number=message.text)
             await state.set_state(Form.gender)
@@ -120,19 +125,21 @@ async def process_name(message: Message, state: FSMContext) -> None:
             await message.answer("Номер телефона должен содержать только цифры и формат")
 
 
+# Ввод пола
 @dp.message(Form.gender)
 async def process_name(message: Message, state: FSMContext) -> None:
     # Отмена регистрации
     if message.text == "Отмена":
         await cancel_registration(message, state)
     else:
+        # Если введено М или Ж то тогда обрабатываем результат и отправляем его в 1С
         if message.text == "М" or message.text == "Ж":
             await state.update_data(gender=message.text)
             await state.update_data(user_id=message.from_user.id)
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=await Form.create_data(await state.get_data()), headers=headers) as response:
                     if response.status == 200 and str(response.headers["Text"]) == "New user registered":
-                        await message.answer("Поздравляем с успешной регистрацией регистрацией")
+                        await message.answer("Поздравляем с успешной регистрацией в нашем клубе")
                     elif response.status == 200 and str(response.headers["Text"]) == "Registered":
                         await message.answer("Вы уже являетесь клиентом нашего клуба")
                     elif response.status == 500:
