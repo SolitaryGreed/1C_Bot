@@ -11,7 +11,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from from_state import Form
 from love_metod.love_block import return_compliment, random_stickers, random_postcard
-from back_def import create_data, format_number_phone, cancel_registration, format_string
+from back_def import create_data, format_number_phone, cancel_registration, format_string, schedule_cancel
 from aiogram.fsm.context import FSMContext
 
 
@@ -28,7 +28,7 @@ dp = Dispatcher()
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     await message.answer("Приветствуем вас в нашем боте! Тут вы можете получить расписание своих занятий."
-                         "\n\n/schedule - Расписание \n/registration - Регистрация")
+                         "\n\n/schedule - Расписание \n/registration - Регистрация\n/cancel_schedule - Отмена записи")
 
 
 # Расписание занятий
@@ -47,6 +47,7 @@ async def text_handler(message: Message) -> None:
             elif response.status == 200 and json_text == "No records":
                 await message.answer("У вас нет записей в нашем клубе")
             elif response.status == 200 and json_text.startswith("ResultOk"):
+                # Форматируем ответ для пользователя
                 await message.answer(await format_string(json_text))
             else:
                 await message.answer("Ой, что-то пошло не так")
@@ -60,6 +61,7 @@ async def text_handler(message: Message) -> None:
     # Отправляем данные через POST и получаем ответ
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data, headers=headers) as response:
+            # Получаем текст из ответа
             json_text = await response.json()
             if response.status == 200 and json_text == "Registered":
                 await message.answer("Вы уже зарегистрированы в нашем боте")
@@ -102,7 +104,7 @@ async def process_name(message: Message, state: FSMContext) -> None:
 
 # Ввод фамилии
 @dp.message(Form.surname)
-async def process_name(message: Message, state: FSMContext) -> None:
+async def process_surname(message: Message, state: FSMContext) -> None:
     # Отмена регистрации
     if message.text == "Отмена":
         await cancel_registration(message, state)
@@ -118,7 +120,7 @@ async def process_name(message: Message, state: FSMContext) -> None:
 
 # Ввод номера телефона
 @dp.message(Form.phone_number)
-async def process_name(message: Message, state: FSMContext) -> None:
+async def process_phone_number(message: Message, state: FSMContext) -> None:
     # Отмена регистрации
     if message.text == "Отмена":
         await cancel_registration(message, state)
@@ -134,7 +136,7 @@ async def process_name(message: Message, state: FSMContext) -> None:
 
 # Ввод пола
 @dp.message(Form.gender)
-async def process_name(message: Message, state: FSMContext) -> None:
+async def process_gender(message: Message, state: FSMContext) -> None:
     # Отмена регистрации
     if message.text == "Отмена":
         await cancel_registration(message, state)
@@ -145,6 +147,9 @@ async def process_name(message: Message, state: FSMContext) -> None:
             await state.update_data(user_id=message.from_user.id)
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, json=await Form.create_data(await state.get_data()), headers=headers) as response:
+                    # Очищаем состояние
+                    await state.clear()
+                    # Получаем текст ответа
                     json_text = await response.json()
                     if response.status == 200 and json_text == "New user registered":
                         await message.answer("Поздравляем с успешной регистрацией в нашем клубе")
@@ -154,6 +159,40 @@ async def process_name(message: Message, state: FSMContext) -> None:
                         await message.answer("Ой, что-то пошло не так")
         else:
             await message.answer("Введите М или Ж")
+
+
+# Отмена записи занятия
+@dp.message(Command("cancel_schedule"))
+async def cancel_schedule(message: Message, state: FSMContext) -> None:
+    # Активируем состояние для отмены записи
+    await state.set_state(Form.number_record)
+    await message.answer("Введите номер записи, которую вы хотите отменить\nЕсли вы передумали введи слово 'Отмена'")
+
+
+# Ввод номера записи
+@dp.message(Form.number_record)
+async def process_number_record(message: Message, state: FSMContext) -> None:
+    if message.text == "Отмена":
+        await schedule_cancel(message, state)
+    else:
+        await state.update_data(number_record=message.text)
+        # Формируем данные для отмены записи
+        async with aiohttp.ClientSession() as session:
+            # Добавляем идентификатор пользователя
+            await state.update_data(user_id=message.from_user.id)
+            async with session.post(url, json=await Form.create_data_cancel(await state.get_data()), headers=headers) as response:
+                # Очищаем состояние
+                await state.clear()
+                # Получаем текст ответа
+                json_text = await response.json()
+                if response.status == 200 and json_text == "Record canceled":
+                    await message.answer("Запись отменена")
+                elif response.status == 200 and json_text == "No register":
+                    await message.answer("Вы не зарегистрированы в нашем боте для регистрации введите номер телефона")
+                elif response.status == 200 and json_text == "No records":
+                    await message.answer("Нет записи с таким номером")
+                else:
+                    await message.answer("Ой, что-то пошло не так")
 
 
 # Пасхалка для Тани
