@@ -10,7 +10,6 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from from_state import Form
-from love_metod.love_block import return_compliment, random_stickers, random_postcard
 from back_def import create_data, format_number_phone, cancel_registration, format_string, schedule_cancel
 from aiogram.fsm.context import FSMContext
 
@@ -193,18 +192,6 @@ async def process_number_record(message: Message, state: FSMContext) -> None:
                     await message.answer("Нет записи с таким номером")
                 else:
                     await message.answer("Ой, что-то пошло не так")
-
-
-# Пасхалка для Тани
-@dp.message(lambda message: message.text and message.text.lower() in ['/love_text', '/love_sticker', '/love_postcard'])
-async def easter_egg(message: Message) -> None:
-    if message.text == "/love_text":
-        await message.answer(await return_compliment())
-    elif message.text == "/love_sticker":
-        await message.answer_sticker(await random_stickers())
-    elif message.text == "/love_postcard":
-        path, caption = await random_postcard()
-        await message.answer_photo(photo=types.FSInputFile(path=path), caption=caption)
 
 
 async def main() -> None:
